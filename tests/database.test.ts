@@ -25,7 +25,7 @@ beforeAll(async () => {
   db = new PGlite({ extensions: { vector, pg_trgm } });
   // Minimal auth contract for a real PostgreSQL engine. Does not emulate Supabase HTTP/Auth.
   await db.exec(
-    `create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`,
+    `create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`,
   );
   for (const name of (await readdir("supabase/migrations"))
     .filter((n) => n.endsWith(".sql"))
@@ -50,6 +50,46 @@ afterAll(async () => {
   await db?.close();
 });
 describe("Real PostgreSQL migrations and RLS", () => {
+  it("isolates notification settings and subscriptions and restricts delivery claims", async () => {
+    await as(alice);
+    await db.exec("insert into public.notification_preferences(user_id) values(auth.uid());");
+    const inserted = await db.query<{ id: string }>(
+      "insert into public.push_subscriptions(endpoint,keys) values('https://fcm.googleapis.com/test', '{}') returning id",
+    );
+    const id = inserted.rows[0].id;
+    await as(bob);
+    expect((await db.query("select * from public.notification_preferences")).rows).toHaveLength(0);
+    expect((await db.query("select * from public.push_subscriptions")).rows).toHaveLength(0);
+    await expect(
+      db.query("select public.claim_notification($1,'daily:2026-09-09')", [id]),
+    ).rejects.toThrow(/permission denied/);
+    await expect(db.query("select * from public.notification_deliveries")).rejects.toThrow(
+      /permission denied/,
+    );
+    await db.exec("reset role; set role service_role;");
+    const claim = () =>
+      db.query<{ claimed: boolean }>(
+        "select public.claim_notification($1,'daily:2026-09-09') as claimed",
+        [id],
+      );
+    expect((await claim()).rows[0].claimed).toBe(true);
+    expect((await claim()).rows[0].claimed).toBe(false);
+    await db.query(
+      "update public.notification_deliveries set claimed_at=now()-interval '6 minutes' where subscription_id=$1",
+      [id],
+    );
+    expect((await claim()).rows[0].claimed).toBe(true);
+    await db.query(
+      "update public.notification_deliveries set sent_at=now(), claimed_at=now()-interval '6 minutes' where subscription_id=$1",
+      [id],
+    );
+    expect((await claim()).rows[0].claimed).toBe(false);
+    await as(alice);
+    await db.query("delete from public.push_subscriptions where id=$1", [id]);
+    await db.exec("reset role;");
+    expect((await db.query("select * from public.notification_deliveries")).rows).toHaveLength(0);
+    await as(alice);
+  });
   it("creates profiles and transactional task relationships", async () => {
     await as(alice);
     expect((await db.query("select * from public.profiles")).rows).toHaveLength(1);

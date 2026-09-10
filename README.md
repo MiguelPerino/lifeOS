@@ -10,13 +10,14 @@ Aplicação com persistência real no Supabase. Não existe modo de demonstraç�
 - Dashboard com tarefas do dia, atrasos, próximos prazos, progresso, conclusões, gráfico semanal, atividades e insights selecionados por IA a partir dos registros reais.
 - CRUD de projetos, tarefas e notas; filtros, ordenação, tags, subtarefas e dependências com prevenção de ciclos.
 - Smart Inbox com extração estruturada, revisão de todos os campos, edição de dependências, confirmação transacional e proteção contra duplicação em retries.
-- Notas, ideias, eventos e lembretes com projeto e data opcionais. Eventos/lembretes são registros organizáveis; não enviam notificações externas.
+- Notas, ideias, eventos e lembretes com projeto e data opcionais. Eventos/lembretes são registros organizáveis; os avisos push desta versão se aplicam às tarefas.
 - Embeddings `nomic-embed-text` de 768 dimensões, índice HNSW/pgvector, invalidação após edição e reindexação manual quando houver falha.
 - Busca textual de tarefas, projetos, conteúdo de notas e tags; busca semântica de notas.
 - Assistente com ferramentas somente de leitura, seleção de evidências por IA, referências verificadas e fatos montados pelo servidor.
 - Planejamento diário manual ou sugerido por IA, revisão, horários editáveis, remoção, reordenação acessível e persistência após confirmação.
 - Command palette com `Ctrl+K` / `Cmd+K`, navegação, criação, abertura de projetos e comandos naturais enviados ao Smart Inbox.
 - Estados vazios, skeletons, mensagens de erro, toasts, tooltips, menu mobile e indicação de desconexão.
+- PWA instalável no Android e notificações Web Push: resumo do dia, pendências, prazos de amanhã e atrasos opcionais, com preferências de horário e silêncio. Exigem configuração do envio e do Supabase Cron; veja [o guia de ativação](docs/notifications.md).
 
 ## Screenshots
 
@@ -71,7 +72,7 @@ Para **recriar do zero apenas o banco local descartável**, `npm run db:reset` r
 ### Opção B — Supabase Free hospedado
 
 1. Crie um projeto no plano Free e obtenha sua Project URL e publishable key em Connect / API Keys.
-2. Preencha as duas variáveis públicas em `.env.local`. **Não use `service_role` nem uma secret key.**
+2. Preencha as duas variáveis públicas em `.env.local`. **Não use `service_role` nem uma secret key nessas variáveis públicas.** O agendador de notificações usa uma chave separada, somente no servidor, conforme [o guia](docs/notifications.md).
 3. Aplique o schema pela CLI:
 
 ```bash
@@ -329,11 +330,11 @@ APIs comerciais de IA, aumento de plano, servidor/GPU remoto, SMTP fora da faixa
 | Tarefa bloqueada                              | Conclua ou remova a dependência. Dependência cancelada não é considerada concluída                                   |
 | Plano recusado                                | Confira dependências anteriores, tarefas ainda abertas e horários sem sobreposição                                   |
 | IA desativada no deploy                       | É o comportamento esperado sem provider configurado; CRUD continua independente                                      |
-| Sem rede                                      | Dados já carregados podem ser lidos, mas mutações exigem conexão; não há fila offline nem service worker             |
+| Sem rede                                      | Dados já carregados podem ser lidos, mas mutações exigem conexão; não há fila offline; o service worker atende apenas notificações             |
 
 ## Limites conscientes
 
-Aplicação orientada a uso pessoal. O workspace pagina as consultas ao Supabase para não perder registros acima do limite por resposta, mas mantém o conjunto de trabalho em memória no frontend. Grandes acervos devem evoluir para paginação por tela e busca textual no servidor. O assistente limita fontes para caber no contexto do modelo e não promete consultas exaustivas. Timeline mostra os 100 eventos mais recentes. Não há colaboração entre contas, anexos, editor rico, notificações push, sincronização realtime ou calendário externo nesta versão.
+Aplicação orientada a uso pessoal. O workspace pagina as consultas ao Supabase para não perder registros acima do limite por resposta, mas mantém o conjunto de trabalho em memória no frontend. Grandes acervos devem evoluir para paginação por tela e busca textual no servidor. O assistente limita fontes para caber no contexto do modelo e não promete consultas exaustivas. Timeline mostra os 100 eventos mais recentes. Não há colaboração entre contas, anexos, editor rico, sincronização realtime ou calendário externo nesta versão.
 
 ## Referências técnicas
 

@@ -51,6 +51,17 @@ test("real local Supabase: account, project, tasks, note, search, plan and reloa
   await page.reload();
   await expect(page.getByText(`Tarefa ${suffix}`, { exact: true }).first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/notifications");
+  await expect(page.getByRole("heading", { name: "Notificações", exact: true })).toBeVisible();
+  await page.getByLabel("Horário: Seu dia pela manhã").fill("08:30");
+  await page.getByRole("button", { name: "Salvar preferências" }).click();
+  await expect(page.getByRole("status")).toContainText("Preferências salvas");
+  await page.reload();
+  await expect(page.getByLabel("Horário: Seu dia pela manhã")).toHaveValue("08:30");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: "test-results/notifications-mobile.png", fullPage: true });
   await page.getByRole("button", { name: "Abrir menu" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   // This test intentionally leaves only its disposable local account for investigation.

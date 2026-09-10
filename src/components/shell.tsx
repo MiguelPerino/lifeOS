@@ -24,6 +24,7 @@ import {
   ChevronDown,
   WifiOff,
   ArrowUpRight,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/browser";
@@ -31,6 +32,7 @@ import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./ui/dialog";
 import { useWorkspace, WorkspaceProvider } from "./workspace-provider";
 import { cn } from "@/lib/utils";
+import { disableDevicePush } from "@/lib/push-client";
 const nav = [
   { href: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
   { href: "/today", label: "Meu dia", icon: Sun },
@@ -40,6 +42,7 @@ const nav = [
   { href: "/notes", label: "Notas & ideias", icon: FileText },
   { href: "/search", label: "Buscar", icon: Search },
   { href: "/assistant", label: "Assistente", icon: Sparkles },
+  { href: "/notifications", label: "Notificações", icon: Bell },
 ];
 function Palette({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
   const { data } = useWorkspace();
@@ -147,6 +150,14 @@ function ShellContent({ children }: { children: React.ReactNode }) {
     };
   }, []);
   async function signOut() {
+    try {
+      await disableDevicePush();
+    } catch {
+      toast.error(
+        "Não foi possível desativar os avisos deste aparelho. Confira a conexão e tente sair novamente.",
+      );
+      return;
+    }
     const { error } = await createClient().auth.signOut();
     if (error) {
       toast.error("Não foi possível sair. Tente novamente.");
