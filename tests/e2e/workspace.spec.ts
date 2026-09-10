@@ -62,6 +62,37 @@ test("real local Supabase: account, project, tasks, note, search, plan and reloa
     true,
   );
   await page.screenshot({ path: "test-results/notifications-mobile.png", fullPage: true });
+  await page.goto("/finances");
+  await page.getByRole("button", { name: "Novo gasto", exact: true }).click();
+  await page.getByLabel("Descrição", { exact: true }).fill("Almoço financeiro");
+  await page.getByLabel("Valor (R$)", { exact: true }).fill("42,50");
+  await page.getByLabel("Categoria", { exact: true }).selectOption("Alimentação");
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.getByTestId("month-total")).toContainText("42,50");
+  await page.getByRole("button", { name: "Nova meta", exact: true }).click();
+  await page.getByLabel("Nome da meta", { exact: true }).fill("Meu PC");
+  await page.getByLabel("Quanto quero juntar (R$)", { exact: true }).fill("5000");
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await page.getByRole("button", { name: "Adicionar ou retirar valor" }).click();
+  await page.getByLabel("Valor (R$)", { exact: true }).fill("200");
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.getByRole("progressbar", { name: "Progresso de Meu PC" })).toHaveAttribute(
+    "aria-valuenow",
+    "4",
+  );
+  await page.reload();
+  await expect(page.getByTestId("month-total")).toContainText("42,50");
+  await expect(page.getByRole("progressbar", { name: "Progresso de Meu PC" })).toHaveAttribute(
+    "aria-valuenow",
+    "4",
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: "test-results/finances-mobile.png", fullPage: true });
+  await page.getByRole("button", { name: "Excluir Almoço financeiro", exact: true }).click();
+  await page.getByRole("button", { name: "Confirmar exclusão" }).click();
+  await expect(page.getByTestId("month-total")).toContainText("0,00");
   await page.getByRole("button", { name: "Abrir menu" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   // This test intentionally leaves only its disposable local account for investigation.

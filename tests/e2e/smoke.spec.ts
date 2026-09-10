@@ -22,6 +22,8 @@ test("PWA assets and service worker are available without a session", async ({ p
   ).toBe(true);
   await page.goto("/notifications");
   await expect(page).toHaveURL(/\/login/);
+  await page.goto("/finances");
+  await expect(page).toHaveURL(/\/login/);
 });
 test("notification APIs reject unauthenticated and cross-origin requests", async ({ request }) => {
   expect((await request.get("/api/notifications")).status()).toBe(401);
@@ -39,6 +41,24 @@ test("notification APIs reject unauthenticated and cross-origin requests", async
     data: {},
   });
   expect(prefs.status()).toBe(400);
+});
+test("financial APIs require authentication and reject cross-origin writes", async ({
+  request,
+}) => {
+  expect((await request.get("/api/finances?month=2026-09&day=2026-09-10")).status()).toBe(401);
+  for (const path of ["/api/finances", "/api/finances/interpret"]) {
+    const foreign = await request.post(path, {
+      headers: { Origin: "https://untrusted.example" },
+      data: {},
+    });
+    expect(foreign.status()).toBe(400);
+    expect(await foreign.json()).toMatchObject({ error: "Origem da solicitação inválida." });
+    const local = await request.post(path, {
+      headers: { Origin: "http://localhost:3000" },
+      data: {},
+    });
+    expect(local.status()).toBe(401);
+  }
 });
 test("private pages require authentication and render without overflow", async ({ page }) => {
   await page.goto("/dashboard");

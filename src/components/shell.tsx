@@ -25,6 +25,7 @@ import {
   WifiOff,
   ArrowUpRight,
   Bell,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/browser";
@@ -40,6 +41,7 @@ const nav = [
   { href: "/tasks", label: "Tarefas", icon: CheckCheck },
   { href: "/projects", label: "Projetos", icon: FolderOpen },
   { href: "/notes", label: "Notas & ideias", icon: FileText },
+  { href: "/finances", label: "Finanças", icon: Wallet },
   { href: "/search", label: "Buscar", icon: Search },
   { href: "/assistant", label: "Assistente", icon: Sparkles },
   { href: "/notifications", label: "Notificações", icon: Bell },
@@ -296,14 +298,14 @@ function ShellContent({ children }: { children: React.ReactNode }) {
       >
         Pular para conteúdo
       </a>
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r bg-muted/40 px-4 py-6 lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col overflow-y-auto border-r bg-muted/40 px-4 py-6 lg:flex">
         {sidebar}
       </aside>
       <Dialog open={mobile} onOpenChange={setMobile}>
         <DialogContent className="left-0 top-0 h-dvh max-h-dvh w-72 translate-x-0 translate-y-0 rounded-none">
           <DialogTitle className="sr-only">Navegação</DialogTitle>
           <DialogDescription className="sr-only">Áreas do LifeOS</DialogDescription>
-          <div className="flex h-full flex-col pt-6">{sidebar}</div>
+          <div className="flex h-full flex-col overflow-y-auto pt-6">{sidebar}</div>
         </DialogContent>
       </Dialog>
       <div className="lg:pl-64">

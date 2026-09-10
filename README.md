@@ -6,6 +6,8 @@ Aplicação com persistência real no Supabase. Não existe modo de demonstraç�
 
 ## O que está implementado
 
+- Finanças pessoais: gastos manuais ou por frase com IA, dashboard mensal, categorias e metas de compra com depósitos/retiradas. Exige aplicar a migration financeira; veja [o guia de publicação](docs/finances.md).
+
 - Supabase Auth: cadastro, login, confirmação de e-mail, recuperação de senha, sessão por cookies e logout.
 - Dashboard com tarefas do dia, atrasos, próximos prazos, progresso, conclusões, gráfico semanal, atividades e insights selecionados por IA a partir dos registros reais.
 - CRUD de projetos, tarefas e notas; filtros, ordenação, tags, subtarefas e dependências com prevenção de ciclos.

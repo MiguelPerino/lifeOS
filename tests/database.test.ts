@@ -3,6 +3,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { vector } from "@electric-sql/pglite-pgvector";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { readFile, readdir } from "node:fs/promises";
+import type { FinanceData } from "@/domain/finances";
 const alice = "11111111-1111-4111-8111-111111111111";
 const bob = "22222222-2222-4222-8222-222222222222";
 let db: PGlite;
@@ -48,6 +49,141 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await db?.close();
+});
+async function financeWrite(action: string, payload: object, key = crypto.randomUUID()) {
+  return db.query("select public.write_finance($1,$2::jsonb,$3::uuid)", [
+    action,
+    JSON.stringify(payload),
+    key,
+  ]);
+}
+async function financeRead(month = "2026-09-01", category = "all", page = 0) {
+  const result = await db.query<{ value: FinanceData }>(
+    "select public.read_finances($1::date,'2026-09-10'::date,$2,$3) as value",
+    [month, category, page],
+  );
+  return result.rows[0].value;
+}
+describe("personal finances", () => {
+  it("aggregates the whole period, paginates expenses and isolates both reads and writes", async () => {
+    await as(alice);
+    const ids: string[] = [];
+    for (let i = 0; i < 25; i++) {
+      const id = crypto.randomUUID();
+      ids.push(id);
+      await financeWrite("expense_save", {
+        id,
+        description: "Almoço",
+        amount_cents: 29,
+        category: "Alimentação",
+        spent_on: "2026-09-10",
+      });
+    }
+    const outside = crypto.randomUUID();
+    await financeWrite("expense_save", {
+      id: outside,
+      description: "Outro mês",
+      amount_cents: 10000,
+      category: "Casa",
+      spent_on: "2026-10-01",
+    });
+    const data = await financeRead();
+    expect(data.month_cents).toBe(725);
+    expect(data.today_cents).toBe(725);
+    expect(data.count).toBe(25);
+    expect(data.expenses).toHaveLength(20);
+    expect(data.days).toEqual([{ day: "2026-09-10", total_cents: 725 }]);
+    expect((await financeRead("2026-09-01", "all", 1)).expenses).toHaveLength(5);
+    expect((await financeRead("2026-09-01", "Casa")).month_cents).toBe(0);
+    await as(bob);
+    expect((await financeRead()).month_cents).toBe(0);
+    expect((await db.query("select * from public.finance_receipts")).rows).toHaveLength(0);
+    await expect(
+      financeWrite("expense_save", {
+        id: ids[0],
+        description: "Ataque",
+        amount_cents: 10,
+        category: "Casa",
+        spent_on: "2026-09-10",
+      }),
+    ).rejects.toThrow();
+    await financeWrite("expense_delete", { id: ids[0] });
+    await as(alice);
+    expect((await financeRead()).count).toBe(25);
+    for (const id of [...ids, outside]) await financeWrite("expense_delete", { id });
+  });
+  it("keeps savings out of expenses, rejects excess withdrawals and retries without duplication", async () => {
+    await as(alice);
+    const goal = crypto.randomUUID();
+    await financeWrite("goal_save", { id: goal, title: "Meu PC", target_cents: 500000 });
+    const deposit = {
+      id: crypto.randomUUID(),
+      goal_id: goal,
+      amount_cents: 20000,
+      saved_on: "2026-09-10",
+    };
+    const key = crypto.randomUUID();
+    await financeWrite("contribution_add", deposit, key);
+    await financeWrite("contribution_add", deposit, key);
+    await expect(
+      financeWrite("contribution_add", { ...deposit, amount_cents: 30000 }, key),
+    ).rejects.toThrow("request_already_saved");
+    await expect(
+      financeWrite("contribution_add", {
+        ...deposit,
+        id: crypto.randomUUID(),
+        amount_cents: -20001,
+      }),
+    ).rejects.toThrow("finance_insufficient_savings");
+    await financeWrite("contribution_add", {
+      ...deposit,
+      id: crypto.randomUUID(),
+      amount_cents: -5000,
+    });
+    const data = await financeRead();
+    expect(data.month_cents).toBe(0);
+    expect(data.goals.find((g) => g.id === goal)?.saved_cents).toBe(15000);
+    expect(data.goals.find((g) => g.id === goal)?.contributions).toHaveLength(2);
+    await expect(
+      db.query("update public.finance_contributions set amount_cents=1 where id=$1", [deposit.id]),
+    ).rejects.toThrow();
+    await expect(
+      db.query("delete from public.finance_contributions where id=$1", [deposit.id]),
+    ).rejects.toThrow();
+    await as(bob);
+    expect((await financeRead()).goals).toHaveLength(0);
+    await expect(
+      financeWrite("contribution_add", { ...deposit, id: crypto.randomUUID() }),
+    ).rejects.toThrow();
+    await as(alice);
+    await financeWrite("goal_delete", { id: goal });
+    expect((await financeRead()).goals).toHaveLength(0);
+    expect((await db.query("select * from public.finance_contributions")).rows).toHaveLength(0);
+  });
+  it("edits and undoes expenses and handles the December boundary", async () => {
+    await as(alice);
+    const expense = {
+      id: crypto.randomUUID(),
+      description: "Compra",
+      amount_cents: 1200,
+      category: "Compras",
+      spent_on: "2026-12-31",
+    };
+    const key = crypto.randomUUID();
+    await financeWrite("expense_save", expense, key);
+    await financeWrite("expense_save", expense, key);
+    expect((await financeRead("2026-12-01")).count).toBe(1);
+    await financeWrite("expense_save", { ...expense, amount_cents: 1500 });
+    expect((await financeRead("2026-12-01")).month_cents).toBe(1500);
+    expect((await financeRead("2027-01-01")).count).toBe(0);
+    const deleteKey = crypto.randomUUID();
+    await financeWrite("expense_delete", { id: expense.id }, deleteKey);
+    await financeWrite("expense_delete", { id: expense.id }, deleteKey);
+    expect((await financeRead("2026-12-01")).month_cents).toBe(0);
+    await db.exec("reset role;set role anon;");
+    await expect(financeRead()).rejects.toThrow();
+    await expect(financeWrite("expense_save", expense)).rejects.toThrow();
+  });
 });
 describe("Real PostgreSQL migrations and RLS", () => {
   it("isolates notification settings and subscriptions and restricts delivery claims", async () => {
