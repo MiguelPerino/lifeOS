@@ -11,8 +11,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(message.title || "LifeOS", {
       body: message.body || "Você tem um novo lembrete.",
-      icon: "/icons/icon-192.png",
-      badge: "/icons/badge-96.png",
+      icon: "/icons/lifeos-192.png",
       tag: message.key || "lifeos",
       data: { url: message.url || "/today" },
     }),

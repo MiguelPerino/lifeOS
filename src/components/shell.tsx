@@ -15,7 +15,6 @@ import {
   FileText,
   Search,
   Sparkles,
-  Leaf,
   Menu,
   Plus,
   Command as CommandIcon,
@@ -34,6 +33,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./ui/dial
 import { useWorkspace, WorkspaceProvider } from "./workspace-provider";
 import { cn } from "@/lib/utils";
 import { disableDevicePush } from "@/lib/push-client";
+import { Brand } from "./brand";
 const nav = [
   { href: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
   { href: "/today", label: "Meu dia", icon: Sun },
@@ -170,17 +170,8 @@ function ShellContent({ children }: { children: React.ReactNode }) {
   }
   const sidebar = (
     <>
-      <Link
-        href="/dashboard"
-        className="mb-9 flex items-center gap-3 px-2 text-xl font-semibold tracking-tight"
-      >
-        <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Leaf size={20} />
-        </span>
-        LifeOS
-        <span className="ml-auto text-[10px] font-normal tracking-widest text-muted-foreground">
-          PERSONAL
-        </span>
+      <Link href="/dashboard" className="mb-7 block shrink-0 rounded-xl">
+        <Brand className="w-44" />
       </Link>
       <Button
         variant="outline"

@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Leaf, ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle } from "lucide-react";
+import { Brand } from "./brand";
 import { createClient } from "@/lib/supabase/browser";
 import { Button } from "./ui/button";
 import { Input, Field } from "./ui/input";
@@ -83,10 +84,7 @@ export function AuthForm({
   return (
     <main className="grid min-h-dvh lg:grid-cols-2">
       <section className="hidden flex-col justify-between bg-[#253f30] p-14 text-[#edf2e9] lg:flex">
-        <div className="flex items-center gap-3 text-xl font-semibold">
-          <Leaf />
-          LifeOS
-        </div>
+        <Brand className="w-52" />
         <div>
           <div className="mb-6 text-xs tracking-[.2em] text-[#bbcbb2]">
             MENOS RUÍDO. MAIS CLAREZA.
@@ -106,9 +104,8 @@ export function AuthForm({
       </section>
       <section className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
-          <div className="mb-12 flex items-center gap-2 text-primary lg:hidden">
-            <Leaf />
-            LifeOS
+          <div className="mb-10 lg:hidden">
+            <Brand className="w-44" />
           </div>
           <p className="eyebrow mb-3">SEU ESPAÇO PESSOAL</p>
           <h2 className="text-3xl font-semibold tracking-tight">
